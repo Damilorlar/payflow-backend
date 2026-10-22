@@ -4,6 +4,7 @@ import {
   getMandateById,
   isFunded,
   lastKnownBalances,
+  listChargeAttempts,
   listDueMandates,
   listMandateCharges,
   listMandateTimeline,
@@ -23,6 +24,7 @@ import {
   validate,
 } from "./validate.ts";
 import type {
+  ChargeAttemptPage,
   ChargePage,
   DueMandateRow,
   DuePage,
@@ -175,6 +177,28 @@ export function mandatesRouter(db: DatabaseSync, tokens: TokenMetadataService): 
 
     const charges = listMandateCharges(db, id.value, limitOf(limit.value));
     const body: ChargePage = { charges };
+    res.json(body);
+  });
+
+  /**
+   * The keeper's attempts to charge the mandate, newest first: when, how it
+   * ended, the error code and transaction hash, and the backoff that
+   * followed. Answers "why wasn't I charged?" for 90 days back.
+   */
+  r.get("/mandates/:id/attempts", (req, res) => {
+    const id = validate(req, res, "id", idSchema, req.params.id);
+    if (!id.ok) return;
+    const limit = validate(req, res, "limit", limitSchema.optional(), present(req.query.limit));
+    if (!limit.ok) return;
+
+    if (!getMandateById(db, id.value)) {
+      sendApiError(res, req, 404, "mandate_not_found");
+      return;
+    }
+
+    const body: ChargeAttemptPage = {
+      attempts: listChargeAttempts(db, id.value, limitOf(limit.value)),
+    };
     res.json(body);
   });
 

@@ -7,6 +7,22 @@ All notable changes to payflow-backend. The format follows
 ## [Unreleased]
 
 ### Added
+- **Failing-charge webhooks (#145).** The keeper sends the merchant's
+  webhooks `charge.failing` when a mandate reaches three consecutive failed
+  attempts — a vault-shortfall skip counts — carrying the shortfall and next
+  retry time, and `charge.recovered` when it settles again. The streak is
+  persisted, so each fires once per streak across restarts.
+- **Persisted charge attempts (#144).** Every keeper attempt is recorded in
+  `charge_attempts` (time, result, error code, transaction hash, shortfall,
+  streak and next retry), served at `GET /api/mandates/:id/attempts`, and the
+  backoff is restored from it on startup. Rows older than 90 days are pruned
+  each pass. A vault-shortfall skip now backs off like a failed charge.
+- **Lifetime value (#143).** `GET /api/plans/:id/stats` reports the average
+  and median lifetime value per subscriber net of fee, from one ranked query;
+  `GET /api/merchants/:address/subscribers` reports `ltv` per subscriber.
+- **Cohort retention (#142).** `GET /api/merchants/:address/cohorts` groups
+  mandates by signup bucket and reports the share still active after each
+  later bucket, from `mandate_events` and its ledger close times.
 - **Protocol fee revenue over time (#149).** `GET /api/protocol/fees` sums
   charge fees per `day`, `week` or `month` bucket of ledger close time,
   reading only the requested window through a covering index on

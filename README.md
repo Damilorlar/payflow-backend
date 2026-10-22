@@ -366,10 +366,11 @@ When extra networks are configured (see below), every route also answers under
 | `GET` | `/api/openapi.json` | The OpenAPI 3.1 description of this API |
 | `GET` | `/api/plans?merchant=&limit=&sort=` | Published plans, each with its merchant's self-declared `merchantName`; `sort=subscribers` ranks them by active mandates (ties by plan id) |
 | `GET` | `/api/plans/:id` | One plan |
-| `GET` | `/api/plans/:id/stats` | Per-plan statistics: active and total mandates, cancellations, total collected, average charges per mandate |
+| `GET` | `/api/plans/:id/stats` | Per-plan statistics: active and total mandates, cancellations, total collected, average charges per mandate, average and median lifetime value per subscriber net of fee |
 | `GET` | `/api/mandates?ids=&subscriber=&merchant=&status=` | Mandates |
 | `GET` | `/api/mandates/:id` | One mandate |
 | `GET` | `/api/mandates/:id/charges` | Settlement history |
+| `GET` | `/api/mandates/:id/attempts?limit=` | The keeper's charge attempts (last 90 days): result, error code, tx hash, shortfall and backoff, newest first |
 | `GET` | `/api/stream?merchant=&subscriber=` | Server-sent `charged`, `subscribed`, `cancelled` and `mandate_ended` events (25-second heartbeat) |
 | `POST` | `/api/webhooks` | Register a URL to receive signed `charged` events; proves control of the merchant address with a signature |
 | `POST` | `/api/webhooks/:id/rotate` | Replace a webhook's signing secret; both secrets sign during the overlap |
@@ -385,8 +386,9 @@ When extra networks are configured (see below), every route also answers under
 | `GET` | `/api/merchants/:address/summary` | Active mandates, revenue, MRR and ARR |
 | `GET` | `/api/merchants/:address/profile` | The merchant's **self-declared** display name and URL, from the plan registry's `set_profile`; not verified by the contract or this API |
 | `GET` | `/api/merchants/:address/unpaid?limit=` | Due mandates the last known vault balance cannot cover (`/api/due`'s `funded: false`), with the shortfall and time overdue, longest overdue first |
-| `GET` | `/api/merchants/:address/subscribers?limit=` | The merchant's distinct subscribers, grouped by lifetime value |
+| `GET` | `/api/merchants/:address/subscribers?limit=` | The merchant's distinct subscribers, grouped by lifetime value, each with `ltv` net of fee |
 | `GET` | `/api/merchants/:address/churn?bucket=month&limit=` | Per-bucket churn: mandates started, cancelled, ended and completed, and the net |
+| `GET` | `/api/merchants/:address/cohorts?bucket=month&limit=` | Cohort retention: per signup bucket, the share of mandates still active after 1, 2, 3... buckets |
 | `GET` | `/api/merchants/:address/revenue?bucket=day&from=&to=` | Revenue over time: gross, fee and net per bucket |
 | `GET` | `/api/merchants/:address/forecast?days=30` | Projected charges over the next N days, net of fees |
 | `GET` | `/api/subscribers/:address/summary` | Mandates and total paid |
