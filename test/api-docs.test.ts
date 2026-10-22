@@ -42,8 +42,7 @@ describe("GET /api/docs", () => {
 
     const page = await res.text();
     assert.match(page, /redoc-container/);
-    assert.match(page, /src="\/api\/docs\/redoc\.standalone\.js"/);
-    assert.match(page, /src="\/api\/docs\/docs\.js"/);
+    assert.match(page, /type="module" src="\/api\/docs\/docs\.js"/);
     // No third-party CDN at runtime: every script is same-origin.
     assert.doesNotMatch(page, /<script[^>]+src="https?:\/\//);
   });
@@ -52,7 +51,9 @@ describe("GET /api/docs", () => {
     const res = await fetch(`${base}/api/docs/docs.js`);
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type") ?? "", /javascript/);
-    assert.match(await res.text(), /Redoc\.init\("\/api\/openapi\.json"/);
+    const script = await res.text();
+    assert.match(script, /import \{ init \} from "\/api\/docs\/redoc\.standalone\.js"/);
+    assert.match(script, /init\("\/api\/openapi\.json"/);
   });
 
   test("serves the ReDoc bundle itself", async () => {

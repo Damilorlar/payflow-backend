@@ -103,11 +103,12 @@ const API_VERSION = "0.2.0";
 /**
  * The human-readable API reference, served at `/api/docs`.
  *
- * The page and its two scripts are all served by this process: ReDoc's
+ * The page and its scripts are all served by this process: ReDoc's
  * standalone bundle comes from the npm package at runtime, never from a CDN,
  * so the documentation works offline and inside a locked-down network. The
- * two scripts are external files rather than inline ones, which keeps the
- * page compatible with the default `script-src 'self'` policy.
+ * bootstrap is an external module rather than an inline script, which keeps
+ * the page compatible with the default `script-src 'self'` policy; it imports
+ * the bundle's `init` export (ReDoc 3 ships an ES module).
  */
 export const DOCS_HTML = `<!doctype html>
 <html lang="en">
@@ -119,8 +120,7 @@ export const DOCS_HTML = `<!doctype html>
   </head>
   <body>
     <div id="redoc-container"></div>
-    <script src="/api/docs/redoc.standalone.js"></script>
-    <script src="/api/docs/docs.js"></script>
+    <script type="module" src="/api/docs/docs.js"></script>
   </body>
 </html>
 `;
@@ -129,7 +129,9 @@ export const DOCS_HTML = `<!doctype html>
  * The page's bootstrap script: point ReDoc at the OpenAPI document this
  * instance serves. ReDoc's own bundle is served beside it.
  */
-export const DOCS_INIT_SCRIPT = `Redoc.init("/api/openapi.json", {}, document.getElementById("redoc-container"));
+export const DOCS_INIT_SCRIPT = `import { init } from "/api/docs/redoc.standalone.js";
+
+init("/api/openapi.json", {}, document.getElementById("redoc-container"));
 `;
 
 /**
