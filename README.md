@@ -364,6 +364,7 @@ When extra networks are configured (see below), every route also answers under
 | `GET` | `/ready` | Readiness probe: `200 ready` once caught up, `503` (`starting`/`catching_up`) while behind |
 | `GET` | `/metrics` | Prometheus metrics: the indexer's gauges and the keeper's counters (only when `METRICS_ENABLED=true`) |
 | `GET` | `/api/openapi.json` | The OpenAPI 3.1 description of this API |
+| `GET` | `/api/docs` | Human-readable API reference, rendered by a self-hosted ReDoc bundle |
 | `GET` | `/api/plans?merchant=&limit=` | Published plans |
 | `GET` | `/api/plans/:id` | One plan |
 | `GET` | `/api/plans/:id/stats` | Per-plan statistics: active and total mandates, cancellations, total collected, average charges per mandate |
@@ -417,6 +418,13 @@ and each says in its description what has to be true for it to answer.
 ```bash
 curl -s localhost:8080/api/openapi.json | jq '.paths | keys'
 ```
+
+`GET /api/docs` renders that document in a browser. The page, its bootstrap
+and ReDoc's standalone bundle are all served by this service, so it works
+offline and needs no third-party CDN. The only CSP addition it needs is
+`worker-src 'self' blob:` for ReDoc's search worker; every other directive is
+helmet's default (`script-src 'self'`, `style-src 'self' https:
+'unsafe-inline'`, `img-src 'self' data:`).
 
 A test compares the document with the routes Express registers, so a route
 that is added without being documented fails the build.

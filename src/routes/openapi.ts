@@ -99,6 +99,38 @@ export interface OpenApiDocument {
 const API_VERSION = "0.2.0";
 
 /**
+ * The human-readable API reference, served at `/api/docs`.
+ *
+ * The page and its two scripts are all served by this process: ReDoc's
+ * standalone bundle comes from the npm package at runtime, never from a CDN,
+ * so the documentation works offline and inside a locked-down network. The
+ * two scripts are external files rather than inline ones, which keeps the
+ * page compatible with the default `script-src 'self'` policy.
+ */
+export const DOCS_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Payflow API documentation</title>
+    <style>body { margin: 0; padding: 0; }</style>
+  </head>
+  <body>
+    <div id="redoc-container"></div>
+    <script src="/api/docs/redoc.standalone.js"></script>
+    <script src="/api/docs/docs.js"></script>
+  </body>
+</html>
+`;
+
+/**
+ * The page's bootstrap script: point ReDoc at the OpenAPI document this
+ * instance serves. ReDoc's own bundle is served beside it.
+ */
+export const DOCS_INIT_SCRIPT = `Redoc.init("/api/openapi.json", {}, document.getElementById("redoc-container"));
+`;
+
+/**
  * The API changelog, which also carries the deprecation policy.
  *
  * It is linked from the document's `externalDocs` so a generated client keeps
@@ -1223,6 +1255,50 @@ function servicePaths(): Record<string, PathItemObject> {
                 schema: { type: "object", description: "An OpenAPI 3.1 document." },
               },
             },
+          },
+        },
+      },
+    },
+    "/api/docs": {
+      get: {
+        tags: ["service"],
+        summary: "Human-readable API documentation",
+        description:
+          "A self-contained HTML page rendering this document with ReDoc. Its scripts are served by this process, so the page works without network access; the only CSP addition ReDoc needs is `worker-src 'self' blob:` for its search worker.",
+        operationId: "getDocs",
+        responses: {
+          "200": {
+            description: "The documentation page.",
+            content: { "text/html": { schema: { type: "string" } } },
+          },
+        },
+      },
+    },
+    "/api/docs/redoc.standalone.js": {
+      get: {
+        tags: ["service"],
+        summary: "The self-hosted ReDoc bundle",
+        description:
+          "ReDoc's standalone browser bundle, served from this process so `/api/docs` never reaches a third-party CDN.",
+        operationId: "getDocsRedocBundle",
+        responses: {
+          "200": {
+            description: "The ReDoc JavaScript bundle.",
+            content: { "text/javascript": { schema: { type: "string" } } },
+          },
+        },
+      },
+    },
+    "/api/docs/docs.js": {
+      get: {
+        tags: ["service"],
+        summary: "The documentation bootstrap",
+        description: "Points ReDoc at `/api/openapi.json`.",
+        operationId: "getDocsScript",
+        responses: {
+          "200": {
+            description: "The bootstrap JavaScript.",
+            content: { "text/javascript": { schema: { type: "string" } } },
           },
         },
       },
