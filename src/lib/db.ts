@@ -249,6 +249,9 @@ const ADDED_INDEXES: ReadonlyArray<[table: string, name: string, columns: string
   // A mandate's charge history can be filtered by close time, so the range
   // is served from the index rather than from the mandate's whole history.
   ["charges", "charges_mandate_created_at", "mandate_id, created_at"],
+  // The subscriber CSV streams one subscriber's charges in close-time order,
+  // the same keyset pattern as the merchant export.
+  ["charges", "charges_subscriber_created_at", "subscriber, created_at"],
 ];
 
 export function migrate(db: DatabaseSync): void {
