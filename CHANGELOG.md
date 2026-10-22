@@ -7,6 +7,10 @@ All notable changes to payflow-backend. The format follows
 ## [Unreleased]
 
 ### Added
+- **A subscriber's payments can be exported as CSV (#165).**
+  `GET /api/subscribers/:address/charges.csv` streams every settled charge
+  oldest first, with date, merchant, plan, amount, fee and tx hash. Amounts
+  are decimal strings in token units, and `from`/`to` bound the range.
 - **SEP-10 sign-in for merchant-only endpoints (#141).** `GET /api/auth` issues
   a SEP-10 challenge signed with `SEP10_SIGNING_KEY`, and `POST /api/auth`
   verifies the signed challenge and returns a short-lived JWT. Webhook routes

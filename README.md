@@ -387,6 +387,7 @@ When extra networks are configured (see below), every route also answers under
 | `GET` | `/api/merchants/:address/revenue?bucket=day&from=&to=` | Revenue over time: gross, fee and net per bucket |
 | `GET` | `/api/merchants/:address/forecast?days=30` | Projected charges over the next N days, net of fees |
 | `GET` | `/api/subscribers/:address/summary` | Mandates and total paid |
+| `GET` | `/api/subscribers/:address/charges.csv?from=&to=` | CSV of the subscriber's payments: date, merchant, plan, amount, fee and tx hash |
 | `GET` | `/api/subscribers/:address/upcoming?days=30` | Charges due over the next N days, with projected times |
 | `GET` | `/api/stats` | Protocol totals, charge volume, fees and last indexed ledger |
 
@@ -394,6 +395,13 @@ When extra networks are configured (see below), every route also answers under
 mandate ids (`?ids=1,2,3`). Ids that do not exist are omitted; more than 100
 ids returns `400` with `error.code = "too_many_ids"` and a non-numeric id
 returns `400` with `error.code = "invalid_ids"`.
+
+`/api/subscribers/:address/charges.csv` streams every payment the subscriber
+made as a CSV download, oldest first: `date`, `merchant`, `plan`, `amount`,
+`fee` and `tx_hash`. `amount` is what the subscriber paid (the charge plus the
+fee), `fee` is the protocol's share, and both have seven decimals. `plan` is
+the plan id. `from` and `to` are optional unix-second bounds, half-open like
+the merchant export.
 
 Every address the API takes is checked as a Stellar StrKey — an account
 (`G...`) or a contract (`C...`) — so a mistyped address is a `400

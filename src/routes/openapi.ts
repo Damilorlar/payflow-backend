@@ -904,6 +904,39 @@ function apiPaths(root: string): Record<string, PathItemObject> {
         },
       },
     },
+    [p("/subscribers/{address}/charges.csv")]: {
+      get: {
+        tags: ["subscribers"],
+        summary: "Export a subscriber's payments as CSV",
+        description:
+          "Every settled charge paid by the subscriber, oldest first, as a CSV download (`Content-Disposition: attachment`). Columns: `date` (ledger close time, ISO 8601 UTC), `merchant`, `plan` (the mandate's plan id), `amount` (what the subscriber paid, the charge amount plus the fee), `fee` (the protocol's share) and `tx_hash`. Amounts are in token units with seven decimals. The range is half-open: a charge exactly at `to` is excluded.",
+        operationId: `exportSubscriberCharges${operationSuffix(root)}`,
+        parameters: [
+          addressParameter(),
+          {
+            name: "from",
+            in: "query",
+            required: false,
+            description: "Start of the range, in unix seconds. Unbounded when absent.",
+            schema: { type: "integer", minimum: 0 },
+          },
+          {
+            name: "to",
+            in: "query",
+            required: false,
+            description: "End of the range (exclusive), in unix seconds. Unbounded when absent.",
+            schema: { type: "integer", minimum: 0 },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "The payments, one per row after a header row.",
+            content: { "text/csv": { schema: { type: "string" } } },
+          },
+          "400": invalidRequest(),
+        },
+      },
+    },
     [p("/subscribers/{address}/summary")]: {
       get: {
         tags: ["subscribers"],

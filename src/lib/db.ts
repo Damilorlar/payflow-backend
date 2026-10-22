@@ -246,6 +246,9 @@ const ADDED_INDEXES: ReadonlyArray<[table: string, name: string, columns: string
   // and buckets them by their close time, so the range filter is served from
   // the index rather than from a scan of the merchant's whole history.
   ["charges", "charges_merchant_created_at", "merchant, created_at"],
+  // The subscriber CSV streams one subscriber's charges in close-time order,
+  // the same keyset pattern as the merchant export.
+  ["charges", "charges_subscriber_created_at", "subscriber, created_at"],
 ];
 
 export function migrate(db: DatabaseSync): void {

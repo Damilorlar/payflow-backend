@@ -74,6 +74,9 @@ release that ships them numbers them here.
   days, net of fees.
 - `GET /api/subscribers/:address/upcoming` — charges due over the next N days,
   with their projected times.
+- `GET /api/subscribers/:address/charges.csv` — the subscriber's settled
+  payments as a CSV download: date, merchant, plan, amount, fee and tx hash.
+  `from`/`to` accept unix seconds.
 - `GET /api/mandates?ids=` — up to 100 mandates in one request.
 - `POST /api/webhooks` — register a URL for signed `charged` events.
 - `POST /api/webhooks/:id/rotate` — replace a webhook's signing secret. During
