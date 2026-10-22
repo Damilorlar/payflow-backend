@@ -20,7 +20,7 @@ import type { RpcStatus } from "./lib/stellar.ts";
 import type { WebhookDispatcher } from "./lib/webhooks.ts";
 import type { Sep10Auth } from "./routes/auth.ts";
 import { logger } from "./lib/logger.ts";
-import { metrics, publishIndexerMetrics } from "./lib/metrics.ts";
+import { metrics, publishBusinessMetrics, publishIndexerMetrics } from "./lib/metrics.ts";
 import { withSpan } from "./lib/telemetry.ts";
 import { getVersionInfo } from "./lib/version.ts";
 
@@ -341,9 +341,13 @@ export function createApp(
   if (config.METRICS_ENABLED) {
     app.get("/metrics", (_req, res) => {
       // The gauges describe the projection as it stands, not as it stood
-      // after the last pass, so they are refreshed before the render.
+      // after the last pass, so they are refreshed before the render. The
+      // business gauges are re-read the same way — one short indexed query
+      // per network — which also serves a deployment whose API answers
+      // without an attached indexer.
       for (const rt of runtimes) {
         if (rt.indexer) publishIndexerMetrics(rt.indexer, rt.config.name);
+        publishBusinessMetrics(rt.db, rt.config.name);
       }
       res.setHeader("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");

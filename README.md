@@ -362,10 +362,11 @@ When extra networks are configured (see below), every route also answers under
 |---|---|---|
 | `GET` | `/health` | Status (`starting`, `ok`, `catching_up`), indexer cursor, lag, `paused` state, data freshness (`freshnessSeconds`), spec-mismatch count, contract IDs, active RPC endpoint |
 | `GET` | `/ready` | Readiness probe: `200 ready` once caught up, `503` (`starting`/`catching_up`) while behind |
-| `GET` | `/metrics` | Prometheus metrics: the indexer's gauges and the keeper's counters (only when `METRICS_ENABLED=true`) |
+| `GET` | `/metrics` | Prometheus metrics: the indexer's gauges, the business gauges (active mandates, active merchants, MRR per network) and the keeper's counters (only when `METRICS_ENABLED=true`) |
 | `GET` | `/api/openapi.json` | The OpenAPI 3.1 description of this API |
 | `GET` | `/api/docs` | Human-readable API reference, rendered by a self-hosted ReDoc bundle |
 | `GET` | `/api/plans?merchant=&limit=` | Published plans |
+| `GET` | `/api/plans?merchant=&limit=&sort=` | Published plans, each with its merchant's self-declared `merchantName`; `sort=subscribers` ranks them by active mandates (ties by plan id) |
 | `GET` | `/api/plans/:id` | One plan |
 | `GET` | `/api/plans/:id/stats` | Per-plan statistics: active and total mandates, cancellations, total collected, average charges per mandate |
 | `GET` | `/api/mandates?ids=&subscriber=&merchant=&status=` | Mandates |
@@ -380,9 +381,12 @@ When extra networks are configured (see below), every route also answers under
 | `GET` | `/api/vault/:address` | Latest balance per token |
 | `GET` | `/api/vault/:address/events?limit=` | Vault deposit, withdrawal and debit history, newest first |
 | `GET` | `/api/protocol` | Current protocol fee (`fee_bps`) and fee-change history |
+| `GET` | `/api/protocol/fees?bucket=month&limit=` | Protocol fee revenue per `day`, `week` or `month` bucket of ledger close time |
 | `GET` | `/api/keeper` | Last 20 keeper passes, failures, skipped mandates and mandate backoff (only when enabled) |
 | `GET` | `/api/due` | Mandates chargeable right now, each with a `funded` flag |
 | `GET` | `/api/merchants/:address/summary` | Active mandates, revenue, MRR and ARR |
+| `GET` | `/api/merchants/:address/profile` | The merchant's **self-declared** display name and URL, from the plan registry's `set_profile`; not verified by the contract or this API |
+| `GET` | `/api/merchants/:address/unpaid?limit=` | Due mandates the last known vault balance cannot cover (`/api/due`'s `funded: false`), with the shortfall and time overdue, longest overdue first |
 | `GET` | `/api/merchants/:address/subscribers?limit=` | The merchant's distinct subscribers, grouped by lifetime value |
 | `GET` | `/api/merchants/:address/churn?bucket=month&limit=` | Per-bucket churn: mandates started, cancelled, ended and completed, and the net |
 | `GET` | `/api/merchants/:address/revenue?bucket=day&from=&to=` | Revenue over time: gross, fee and net per bucket |
@@ -460,13 +464,23 @@ deployment that does not scrape them should not expose them.
 | `payflow_indexer_cursor` | gauge | The ledger up to which events have been projected |
 | `payflow_indexer_latest_ledger` | gauge | The latest ledger the RPC node reported |
 | `payflow_indexer_lag` | gauge | How many ledgers the projection trails the network by |
+| `payflow_active_mandates` | gauge | Mandates currently active in the projection |
+| `payflow_active_merchants` | gauge | Merchants with at least one active mandate |
+| `payflow_mrr` | gauge | Monthly recurring revenue of the active mandates, normalised to a 30-day month |
 | `payflow_events_applied_total` | counter | Contract events applied to the projection |
 | `payflow_charges_settled_total` | counter | Charges the keeper settled |
 | `payflow_charges_failed_total` | counter | Charges the keeper could not settle |
 | `payflow_keeper_passes_total` | counter | Keeper passes run |
 
-The three indexer gauges carry a `network` label, so an instance that serves
-testnet and mainnet reports both. The counters are the process's own totals:
+Every gauge carries a `network` label — and only that label, so the series
+stay bounded however many merchants there are — so an instance that serves
+testnet and mainnet reports both. The three business gauges are re-read from
+the projection after every indexer pass (and again before each scrape), so a
+dashboard's growth charts follow the indexer. `payflow_mrr` uses the same
+arithmetic as `GET /api/merchants/:address/summary` (`amount × 2592000 /
+period` summed over active mandates) and is exported as the exact decimal
+string the projection computed, in the token's smallest unit — an amount
+never becomes a JavaScript number. The counters are the process's own totals:
 they reset when the process restarts, which is what Prometheus expects.
 
 ### The due list and the vault balance
@@ -697,6 +711,7 @@ the server's public key as `SIGNING_KEY` and the endpoint as
 | `not_found` | 404 | An unknown path, or a method/path the API does not expose |
 | `plan_not_found` | 404 | `GET /api/plans/:id` or `GET /api/plans/:id/stats` with no such plan |
 | `mandate_not_found` | 404 | `GET /api/mandates/:id` or `GET /api/mandates/:id/charges` with no such mandate |
+| `profile_not_found` | 404 | `GET /api/merchants/:address/profile` for a merchant that has not set a profile |
 | `invalid_ids` | 400 | `?ids=` contains a non-positive-integer token |
 | `too_many_ids` | 400 | `?ids=` lists more than 100 ids |
 | `invalid_request` | 400 | A query or path parameter is not valid; `error.details` says which |
