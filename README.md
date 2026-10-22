@@ -370,7 +370,7 @@ When extra networks are configured (see below), every route also answers under
 | `GET` | `/api/plans/:id/stats` | Per-plan statistics: active and total mandates, cancellations, total collected, average charges per mandate |
 | `GET` | `/api/mandates?ids=&subscriber=&merchant=&status=` | Mandates |
 | `GET` | `/api/mandates/:id` | One mandate |
-| `GET` | `/api/mandates/:id/charges` | Settlement history |
+| `GET` | `/api/mandates/:id/charges?from=&to=` | Settlement history, optionally bounded by ledger close time |
 | `GET` | `/api/stream?merchant=&subscriber=` | Server-sent `charged`, `subscribed`, `cancelled` and `mandate_ended` events (25-second heartbeat) |
 | `POST` | `/api/webhooks` | Register a URL to receive signed `charged` events; proves control of the merchant address with a signature |
 | `POST` | `/api/webhooks/:id/rotate` | Replace a webhook's signing secret; both secrets sign during the overlap |
@@ -395,6 +395,12 @@ When extra networks are configured (see below), every route also answers under
 mandate ids (`?ids=1,2,3`). Ids that do not exist are omitted; more than 100
 ids returns `400` with `error.code = "too_many_ids"` and a non-numeric id
 returns `400` with `error.code = "invalid_ids"`.
+
+`/api/mandates/:id/charges` accepts `from` and `to`, either as unix seconds or
+as an ISO 8601 date/date-time (`2026-10-01` covers that whole UTC day). Both
+bounds are **inclusive**, and `to` covers the whole second. A `from` later than `to`, or a
+value that is neither form, is `400 invalid_request` with the parameter named
+in `error.details`.
 
 Every address the API takes is checked as a Stellar StrKey — an account
 (`G...`) or a contract (`C...`) — so a mistyped address is a `400

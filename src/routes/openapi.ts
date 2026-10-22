@@ -35,6 +35,8 @@ export interface SchemaObject {
   additionalProperties?: boolean | SchemaObject;
   /** A schema that must satisfy every listed schema. */
   allOf?: SchemaObject[];
+  /** A schema that must satisfy exactly one of the listed schemas. */
+  oneOf?: SchemaObject[];
   $ref?: string;
   minimum?: number;
   maximum?: number;
@@ -173,6 +175,27 @@ const limitParameter = (): ParameterObject => ({
   required: false,
   description: "How many rows to return. Capped at 200; a larger value is not an error.",
   schema: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+});
+
+/**
+ * A query parameter bounding a range: unix seconds or an ISO 8601
+ * date/date-time, both inclusive at the endpoints. A date-only `from` starts
+ * the day and a date-only `to` ends it, both in UTC.
+ */
+const dateBoundParameter = (name: "from" | "to", description: string): ParameterObject => ({
+  name,
+  in: "query",
+  required: false,
+  description,
+  schema: {
+    oneOf: [
+      { type: "integer", minimum: 0, description: "Unix seconds." },
+      {
+        type: "string",
+        description: "An ISO 8601 date or date-time with a timezone, e.g. `2026-10-01`.",
+      },
+    ],
+  },
 });
 
 /** A query parameter holding a number of days. */
@@ -509,9 +532,15 @@ function apiPaths(root: string): Record<string, PathItemObject> {
       get: {
         tags: ["mandates"],
         summary: "A mandate's settlement history",
-        description: "The charges settled for this mandate, newest first.",
+        description:
+          "The charges settled for this mandate, newest first. `from` and `to` filter by the charge's ledger close time and are both inclusive; `to` covers the whole second. Each accepts unix seconds or an ISO 8601 date/date-time. A date-only `2026-10-01` covers the whole UTC day, while `2026-10-01T12:00:00Z` is that exact instant. A `from` later than `to` is `400 invalid_request`.",
         operationId: `listMandateCharges${operationSuffix(root)}`,
-        parameters: [idParameter(), limitParameter()],
+        parameters: [
+          idParameter(),
+          limitParameter(),
+          dateBoundParameter("from", "Start of the range, inclusive. Unbounded when absent."),
+          dateBoundParameter("to", "End of the range, inclusive. Unbounded when absent."),
+        ],
         responses: {
           "200": {
             description: "The charges.",

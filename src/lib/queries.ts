@@ -277,15 +277,39 @@ export function getMandateMerchant(db: DatabaseSync, id: number): string | undef
   )?.merchant;
 }
 
-/** List charge events for a mandate ordered by ledger descending. */
+/**
+ * List charge events for a mandate ordered by ledger descending.
+ *
+ * `from` and `to` bound the charge's ledger close time in unix seconds and
+ * are both inclusive: `to` covers the whole second, so a charge stored at
+ * `to * 1000 + 1` milliseconds is inside the range. Without them the whole
+ * history is returned.
+ */
 export function listMandateCharges(
   db: DatabaseSync,
   mandateId: number,
   limit: number,
+  from?: number,
+  to?: number,
 ): ChargeRow[] {
+  const where = ["mandate_id = ?"];
+  const args: unknown[] = [mandateId];
+  if (from !== undefined) {
+    // `created_at` is unix milliseconds; the range is in seconds.
+    where.push("created_at >= ?");
+    args.push(from * 1000);
+  }
+  if (to !== undefined) {
+    where.push("created_at < ?");
+    args.push((to + 1) * 1000);
+  }
+  args.push(limit);
+  // The predicates are fixed fragments and the values are bound parameters,
+  // so no request data reaches the SQL text.
   return db
-    .prepare("SELECT * FROM charges WHERE mandate_id = ? ORDER BY ledger DESC LIMIT ?")
-    .all(mandateId, limit) as unknown as ChargeRow[];
+    // eslint-disable-next-line no-restricted-syntax
+    .prepare(`SELECT * FROM charges WHERE ${where.join(" AND ")} ORDER BY ledger DESC LIMIT ?`)
+    .all(...(args as never[])) as unknown as ChargeRow[];
 }
 
 /** Latest indexed vault balance for each token owned by an address. */

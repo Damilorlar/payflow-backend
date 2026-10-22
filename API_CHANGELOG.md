@@ -77,6 +77,10 @@ release that ships them numbers them here.
 - `GET /api/subscribers/:address/upcoming` — charges due over the next N days,
   with their projected times.
 - `GET /api/mandates?ids=` — up to 100 mandates in one request.
+- `GET /api/mandates/:id/charges?from=&to=` — bound the settlement history by
+  ledger close time. Each bound accepts unix seconds or an ISO 8601
+  date/date-time; a date-only bound covers its whole UTC day. Both are
+  inclusive. An invalid value or `from > to` is `400 invalid_request`.
 - `POST /api/webhooks` — register a URL for signed `charged` events.
 - `POST /api/webhooks/:id/rotate` — replace a webhook's signing secret. During
   the overlap `Payflow-Signature` lists two signatures,

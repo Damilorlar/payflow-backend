@@ -17,6 +17,12 @@ All notable changes to payflow-backend. The format follows
   backend and has no runtime dependencies. It keeps its own version and
   changelog under `client/`, and `client-v*` releases publish it with npm
   provenance.
+- **A mandate's charges can be filtered by date (#164).**
+  `GET /api/mandates/:id/charges` accepts `from` and `to`, as unix seconds or
+  ISO 8601 dates (a date covers its whole UTC day), and returns only charges
+  whose ledger close time falls in the inclusive range. A `from` after `to` is
+  `400 invalid_request`, and the filter is served by a
+  `(mandate_id, created_at)` index.
 - **SEP-10 sign-in for merchant-only endpoints (#141).** `GET /api/auth` issues
   a SEP-10 challenge signed with `SEP10_SIGNING_KEY`, and `POST /api/auth`
   verifies the signed challenge and returns a short-lived JWT. Webhook routes
