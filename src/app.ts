@@ -245,7 +245,7 @@ export function createApp(
 
   // ReDoc runs its search index in a web worker created from a Blob URL.
   // Every other directive stays helmet's default: the bundle and the
-  // bootstrap are same-origin scripts (`script-src 'self'`), and ReDoc's
+  // bootstrap are same-origin modules (`script-src 'self'`), and ReDoc's
   // injected styles are covered by the default `style-src 'unsafe-inline'`.
   // This is the only addition the documentation page needs.
   app.use(
