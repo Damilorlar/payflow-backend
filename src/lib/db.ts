@@ -246,6 +246,9 @@ const ADDED_INDEXES: ReadonlyArray<[table: string, name: string, columns: string
   // and buckets them by their close time, so the range filter is served from
   // the index rather than from a scan of the merchant's whole history.
   ["charges", "charges_merchant_created_at", "merchant, created_at"],
+  // A mandate's charge history can be filtered by close time, so the range
+  // is served from the index rather than from the mandate's whole history.
+  ["charges", "charges_mandate_created_at", "mandate_id, created_at"],
 ];
 
 export function migrate(db: DatabaseSync): void {
