@@ -108,6 +108,21 @@ release that ships them numbers them here.
 - `GET /api/auth` and `POST /api/auth` — SEP-10 sign-in. Every webhook route
   also accepts the issued JWT as `Authorization: Bearer <token>`; signed
   messages keep working unchanged.
+- `GET /api/merchants/:address/cohorts` — per signup cohort (`day`, `week` or
+  `month` of ledger close time), the mandates still active after 1, 2, 3...
+  buckets, as `active` and `share` (#142).
+- `GET /api/plans/:id/stats` gained `averageLtv` and `medianLtv`, and
+  `GET /api/merchants/:address/subscribers` gained `ltv` per subscriber:
+  lifetime value net of the protocol fee, as decimal strings. `ltv` equals
+  `totalCollected`, which already summed the merchant's net amounts (#143).
+- `GET /api/mandates/:id/attempts` — the keeper's charge attempts for the
+  mandate over the last 90 days, newest first: `result` (`settled`, `failed`
+  or `skipped`), `errorCode`, `txHash`, `shortfall` on a skipped attempt, and
+  the backoff that followed (#144).
+- Webhooks receive two new `event` values from the keeper: `charge.failing`
+  on a mandate's third consecutive failed attempt (with `shortfall`,
+  `next_retry_at` and `error_code`) and `charge.recovered` when it next
+  settles (with `tx_hash`), each once per streak (#145).
 - `/api/<network>/...` — every route again, per configured network.
 - `/api/mandates` and `/api/plans` accept `?cursor=` and return `nextCursor`.
 - `/api/stats` reports charge volume and fees; `/api/due` gained `funded`;

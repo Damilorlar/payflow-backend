@@ -508,6 +508,8 @@ describe("http api", () => {
         mandateCount: 1,
         chargeCount: 1,
         totalCollected: "9900000",
+        // Net of the 100000 fee the subscriber's 10000000 charge paid.
+        ltv: "9900000",
       },
     ]);
   });
@@ -515,7 +517,7 @@ describe("http api", () => {
   test("subscriber with mandates but no settled charges still appears at zero", async () => {
     const { body } = await get(`/api/merchants/${YEARLY_MERCHANT}/subscribers`);
     assert.deepEqual(body.subscribers, [
-      { subscriber: SUBSCRIBER, mandateCount: 1, chargeCount: 0, totalCollected: "0" },
+      { subscriber: SUBSCRIBER, mandateCount: 1, chargeCount: 0, totalCollected: "0", ltv: "0" },
     ]);
   });
 

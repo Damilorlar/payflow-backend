@@ -414,7 +414,7 @@ function apiPaths(root: string): Record<string, PathItemObject> {
         tags: ["plans"],
         summary: "Statistics for one plan",
         description:
-          "Active and total mandates, cancellations, the gross amount collected and the average number of settled charges per mandate.",
+          "Active and total mandates, cancellations, the gross amount collected, the average number of settled charges per mandate, and the average and median lifetime value per subscriber net of the protocol fee.",
         operationId: `getPlanStats${operationSuffix(root)}`,
         parameters: [idParameter()],
         responses: {
@@ -566,6 +566,34 @@ function apiPaths(root: string): Record<string, PathItemObject> {
                     charges: { type: "array", items: { $ref: "#/components/schemas/Charge" } },
                   },
                   required: ["charges"],
+                },
+              },
+            },
+          },
+          "400": invalidRequest(),
+          "404": notFound("mandate_not_found", "mandate"),
+        },
+      },
+    },
+    [p("/mandates/{id}/attempts")]: {
+      get: {
+        tags: ["mandates"],
+        summary: "The keeper's charge attempts for a mandate",
+        description:
+          "Every attempt the keeper made to charge this mandate in the last 90 days, newest first: when, how it ended, the error code, the transaction hash and the backoff that followed. `skipped` means the vault could not cover the charge, so nothing was submitted.",
+        operationId: `listChargeAttempts${operationSuffix(root)}`,
+        parameters: [idParameter(), limitParameter()],
+        responses: {
+          "200": {
+            description: "The attempts.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    attempts: { type: "array", items: { $ref: "#/components/schemas/ChargeAttempt" } },
+                  },
+                  required: ["attempts"],
                 },
               },
             },
@@ -923,6 +951,25 @@ function apiPaths(root: string): Record<string, PathItemObject> {
             description: "The churn report.",
             content: {
               "application/json": { schema: { $ref: "#/components/schemas/MerchantChurn" } },
+            },
+          },
+          "400": invalidRequest(),
+        },
+      },
+    },
+    [p("/merchants/{address}/cohorts")]: {
+      get: {
+        tags: ["merchants"],
+        summary: "A merchant's cohort retention",
+        description:
+          "Mandates grouped by the calendar bucket they started in, and for each cohort the share still active after 1, 2, 3... buckets: active means no cancellation, ending or completion before that bucket began. Starts and departures are bucketed by ledger close time. `limit` keeps the most recent cohorts (default 12, capped at 120); each cohort reports at most 120 periods.",
+        operationId: `getMerchantCohorts${operationSuffix(root)}`,
+        parameters: [addressParameter(), bucketParameter(), limitParameter()],
+        responses: {
+          "200": {
+            description: "The cohorts.",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/MerchantCohorts" } },
             },
           },
           "400": invalidRequest(),
@@ -1800,6 +1847,16 @@ function componentSchemas(): Record<string, SchemaObject> {
         totalCollected: amount(),
         totalCharges: { type: "integer" },
         averageChargesPerMandate: { type: "number" },
+        averageLtv: {
+          ...amount(),
+          description:
+            "Mean lifetime value per subscriber, net of the protocol fee: the sum of each subscriber's charge amounts on this plan, averaged over every subscriber with a mandate (one never charged counts as 0). Rounded down; \"0\" when the plan has no mandates.",
+        },
+        medianLtv: {
+          ...amount(),
+          description:
+            "Median lifetime value per subscriber, net of the protocol fee, over the same subscribers; with an even count, the mean of the middle two rounded down.",
+        },
       },
       required: [
         "planId",
@@ -1809,7 +1866,41 @@ function componentSchemas(): Record<string, SchemaObject> {
         "totalCollected",
         "totalCharges",
         "averageChargesPerMandate",
+        "averageLtv",
+        "medianLtv",
       ],
+    },
+    ChargeAttempt: {
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        mandateId: { type: "integer" },
+        attemptedAt: { type: "integer", description: "When the keeper made the attempt, in unix seconds." },
+        result: {
+          type: "string",
+          enum: ["settled", "failed", "skipped"],
+          description: "`skipped`: the vault could not cover the charge, so nothing was submitted.",
+        },
+        errorCode: {
+          type: ["string", "null"],
+          description:
+            "Why the attempt did not settle: an RPC status (`TRY_AGAIN_LATER`, `FAILED`, `NOT_FOUND`), a transaction result code (`txBadSeq`), a Soroban host error (`Error(Contract, #3)`), `INSUFFICIENT_BALANCE`, `CHARGE_MANY_SKIPPED` or `SUBMIT_FAILED`. Null when it settled.",
+        },
+        txHash: { type: ["string", "null"] },
+        shortfall: {
+          ...amount(),
+          description: "Only on a `skipped` attempt: what the vault was missing.",
+        },
+        failures: {
+          type: "integer",
+          description: "Consecutive failed attempts after this one; 0 once a charge settles.",
+        },
+        retryAt: {
+          type: ["integer", "null"],
+          description: "When the keeper tries again, in unix seconds; null after a settlement.",
+        },
+      },
+      required: ["id", "mandateId", "attemptedAt", "result", "errorCode", "txHash", "failures", "retryAt"],
     },
     TokenRevenue: {
       type: "object",
@@ -1840,8 +1931,13 @@ function componentSchemas(): Record<string, SchemaObject> {
         mandateCount: { type: "integer" },
         chargeCount: { type: "integer" },
         totalCollected: amount(),
+        ltv: {
+          ...amount(),
+          description:
+            "Lifetime value net of the protocol fee: what this subscriber has paid the merchant across their mandates.",
+        },
       },
-      required: ["subscriber", "mandateCount", "chargeCount", "totalCollected"],
+      required: ["subscriber", "mandateCount", "chargeCount", "totalCollected", "ltv"],
     },
     MerchantSubscribers: {
       type: "object",
@@ -1875,6 +1971,36 @@ function componentSchemas(): Record<string, SchemaObject> {
         totals: { $ref: "#/components/schemas/ChurnBucket" },
       },
       required: ["merchant", "bucket", "buckets", "totals"],
+    },
+    Cohort: {
+      type: "object",
+      properties: {
+        cohort: { type: "string", description: "The label of the bucket the mandates started in, in UTC." },
+        size: { type: "integer", description: "Mandates that started in the bucket." },
+        retention: {
+          type: "array",
+          description: "One entry per bucket that has begun since the cohort's, oldest first.",
+          items: {
+            type: "object",
+            properties: {
+              period: { type: "integer", minimum: 1, description: "Buckets after the cohort's own." },
+              active: { type: "integer", description: "Mandates with no departure before that bucket began." },
+              share: { type: "number", minimum: 0, maximum: 1, description: "`active` ÷ `size`." },
+            },
+            required: ["period", "active", "share"],
+          },
+        },
+      },
+      required: ["cohort", "size", "retention"],
+    },
+    MerchantCohorts: {
+      type: "object",
+      properties: {
+        merchant: { type: "string", description: ADDRESS_DESCRIPTION },
+        bucket: { type: "string", enum: ["day", "week", "month"] },
+        cohorts: { type: "array", items: { $ref: "#/components/schemas/Cohort" } },
+      },
+      required: ["merchant", "bucket", "cohorts"],
     },
     RevenueBucket: {
       type: "object",
