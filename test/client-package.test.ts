@@ -50,7 +50,7 @@ describe("the published client package", () => {
 
   test("the README quick-start example type-checks against the client", async () => {
     const readme = await readFile(join(packageDir, "README.md"), "utf8");
-    const block = /```ts\n([\s\S]*?)```/.exec(readme);
+    const block = /```ts\r?\n([\s\S]*?)```/.exec(readme);
     assert.ok(block?.[1], "the README has a TypeScript example");
     assert.match(block[1], /from "@mmm-pay\/payflow-client"/);
 
