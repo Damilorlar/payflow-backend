@@ -362,7 +362,7 @@ When extra networks are configured (see below), every route also answers under
 |---|---|---|
 | `GET` | `/health` | Status (`starting`, `ok`, `catching_up`), indexer cursor, lag, `paused` state, data freshness (`freshnessSeconds`), spec-mismatch count, contract IDs, active RPC endpoint |
 | `GET` | `/ready` | Readiness probe: `200 ready` once caught up, `503` (`starting`/`catching_up`) while behind |
-| `GET` | `/metrics` | Prometheus metrics: the indexer's gauges and the keeper's counters (only when `METRICS_ENABLED=true`) |
+| `GET` | `/metrics` | Prometheus metrics: the indexer's gauges, the business gauges (active mandates, active merchants, MRR per network) and the keeper's counters (only when `METRICS_ENABLED=true`) |
 | `GET` | `/api/openapi.json` | The OpenAPI 3.1 description of this API |
 | `GET` | `/api/plans?merchant=&limit=&sort=` | Published plans, each with its merchant's self-declared `merchantName`; `sort=subscribers` ranks them by active mandates (ties by plan id) |
 | `GET` | `/api/plans/:id` | One plan |
@@ -441,13 +441,23 @@ deployment that does not scrape them should not expose them.
 | `payflow_indexer_cursor` | gauge | The ledger up to which events have been projected |
 | `payflow_indexer_latest_ledger` | gauge | The latest ledger the RPC node reported |
 | `payflow_indexer_lag` | gauge | How many ledgers the projection trails the network by |
+| `payflow_active_mandates` | gauge | Mandates currently active in the projection |
+| `payflow_active_merchants` | gauge | Merchants with at least one active mandate |
+| `payflow_mrr` | gauge | Monthly recurring revenue of the active mandates, normalised to a 30-day month |
 | `payflow_events_applied_total` | counter | Contract events applied to the projection |
 | `payflow_charges_settled_total` | counter | Charges the keeper settled |
 | `payflow_charges_failed_total` | counter | Charges the keeper could not settle |
 | `payflow_keeper_passes_total` | counter | Keeper passes run |
 
-The three indexer gauges carry a `network` label, so an instance that serves
-testnet and mainnet reports both. The counters are the process's own totals:
+Every gauge carries a `network` label — and only that label, so the series
+stay bounded however many merchants there are — so an instance that serves
+testnet and mainnet reports both. The three business gauges are re-read from
+the projection after every indexer pass (and again before each scrape), so a
+dashboard's growth charts follow the indexer. `payflow_mrr` uses the same
+arithmetic as `GET /api/merchants/:address/summary` (`amount × 2592000 /
+period` summed over active mandates) and is exported as the exact decimal
+string the projection computed, in the token's smallest unit — an amount
+never becomes a JavaScript number. The counters are the process's own totals:
 they reset when the process restarts, which is what Prometheus expects.
 
 ### The due list and the vault balance
