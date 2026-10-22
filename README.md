@@ -750,7 +750,7 @@ re-exports the same declarations â€” types are shared, not copied, so backe
 and frontend cannot drift.
 
 ```ts
-import { PayflowClient, PayflowApiError } from "payflow-backend/client";
+import { PayflowClient, PayflowApiError } from "@mmm-pay/payflow-client";
 
 const api = new PayflowClient("http://localhost:8080");
 const { plans } = await api.plans({ merchant });
@@ -762,11 +762,17 @@ try {
 }
 ```
 
-Every endpoint is covered: `health`, `plans`, `plan`, `mandates`, `mandate`,
-`charges`, `due`, `merchantSummary`, `subscriberSummary`, `stats`. The
-package is private for now: the frontend depends on it from the repository
-(it is built by `npm run build` into `dist/client`), and publishing it to a
-registry is a release-time step for maintainers.
+Every endpoint is covered: `health`, `plans`, `plan`, `planStats`, `mandates`,
+`mandate`, `charges`, `due`, `merchantSummary`, `merchantForecast`,
+`merchantSubscribers`, `merchantChurn`, `merchantRevenue`, `subscriberSummary`,
+`stats`, `protocol`, `vault`, `vaultEvents`, and `keeper`.
+
+The client is published independently as
+[`@mmm-pay/payflow-client`](https://www.npmjs.com/package/@mmm-pay/payflow-client).
+It has no runtime dependencies and its own version and changelog under
+`client/`. `npm run build:client` compiles it; a `client-v*` tag runs the
+release workflow, which checks the tag against `client/package.json` and
+publishes it to npm with provenance.
 
 `tokens` breaks the same revenue down per token, joined through each charge's
 mandate and plan. With `TOKEN_ID` configured, the flat `totalCollected` and

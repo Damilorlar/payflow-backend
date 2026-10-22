@@ -7,6 +7,11 @@ All notable changes to payflow-backend. The format follows
 ## [Unreleased]
 
 ### Added
+- **The typed client as a standalone npm package (#163).**
+  `@mmm-pay/payflow-client` is built from the same response types as the
+  backend and has no runtime dependencies. It keeps its own version and
+  changelog under `client/`, and `client-v*` releases publish it with npm
+  provenance.
 - **SEP-10 sign-in for merchant-only endpoints (#141).** `GET /api/auth` issues
   a SEP-10 challenge signed with `SEP10_SIGNING_KEY`, and `POST /api/auth`
   verifies the signed challenge and returns a short-lived JWT. Webhook routes
