@@ -61,6 +61,8 @@ release that ships them numbers them here.
 ### Added
 
 - `GET /api/openapi.json` — an OpenAPI 3.1 description of every route.
+- `GET /api/docs` — a human-readable rendering of that description, with the
+  ReDoc bundle self-hosted so it works offline.
 - `GET /ready` — a readiness probe answering `503` while the projection trails
   the network by more than 120 ledgers. `/health` stays a liveness probe.
 - `GET /metrics` — Prometheus metrics, only when `METRICS_ENABLED=true`.

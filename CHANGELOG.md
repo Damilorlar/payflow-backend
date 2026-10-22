@@ -7,6 +7,11 @@ All notable changes to payflow-backend. The format follows
 ## [Unreleased]
 
 ### Added
+- **A readable API reference (#162).** `GET /api/docs` renders the OpenAPI
+  document with ReDoc. The page, its bootstrap and the ReDoc bundle are all
+  served by the service, so the reference works offline with no third-party
+  CDN. The CSP is widened only with `worker-src 'self' blob:` for ReDoc's
+  search worker; every other directive stays helmet's default.
 - **SEP-10 sign-in for merchant-only endpoints (#141).** `GET /api/auth` issues
   a SEP-10 challenge signed with `SEP10_SIGNING_KEY`, and `POST /api/auth`
   verifies the signed challenge and returns a short-lived JWT. Webhook routes
